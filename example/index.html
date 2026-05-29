@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YakNet WebSocket Developer Console</title>
+    
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #080915;
+            --panel-bg: rgba(18, 20, 38, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-primary: #8a2be2;
+            --accent-secondary: #ff007f;
+            --accent-glow: rgba(138, 43, 226, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: #9ea4ca;
+            --success: #00ff88;
+            --danger: #ff3b30;
+            --warning: #ffcc00;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 127, 0.1) 0%, transparent 45%);
+            padding: 20px;
+        }
+
+        /* Ambient animated particles background decoration */
+        .ambient-glow {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, rgba(0,0,0,0) 70%);
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            filter: blur(80px);
+            animation: pulse 10s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.8; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1050px;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(45deg, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header h1 span.logo-badge {
+            font-size: 1.2rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-text-fill-color: initial;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.4);
+            letter-spacing: 1px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Glassmorphism Panel style */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .panel:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #fff;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        /* Connection Controls */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], input[type="search"] {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px rgba(138, 43, 226, 0.2);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(138, 43, 226, 0.6);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: rgba(255, 59, 48, 0.15);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 59, 48, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        /* Status Badge */
+        .status-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--danger);
+            box-shadow: 0 0 10px var(--danger);
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.active {
+            background-color: var(--success);
+            box-shadow: 0 0 15px var(--success);
+            animation: pulse-green 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(1); box-shadow: 0 0 10px var(--success); }
+            100% { transform: scale(1.2); box-shadow: 0 0 20px var(--success); }
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--danger);
+        }
+
+        .status-text.active {
+            color: var(--success);
+        }
+
+        /* Message board */
+        .message-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .message-input-area {
+            position: relative;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 90px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            resize: none;
+            transition: all 0.2s ease;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px rgba(138, 43, 226, 0.2);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        /* Quick actions */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .quick-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-btn:hover {
+            background: rgba(138, 43, 226, 0.15);
+            border-color: rgba(138, 43, 226, 0.4);
+            color: #fff;
+        }
+
+        /* Message list / Terminal logs */
+        .console-box {
+            flex: 1;
+            background: rgba(4, 5, 11, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 15px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            height: 320px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            scroll-behavior: smooth;
+        }
+
+        .console-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            line-height: 1.4;
+            animation: fadeIn 0.2s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(3px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .console-time {
+            color: #555c8c;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .console-tag {
+            font-weight: 500;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .tag-sys { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
+        .tag-sent { background: rgba(138, 43, 226, 0.15); color: #c084fc; border: 1px solid rgba(138, 43, 226, 0.3); }
+        .tag-recv { background: rgba(0, 255, 136, 0.1); color: var(--success); border: 1px solid rgba(0, 255, 136, 0.2); }
+        .tag-err { background: rgba(255, 59, 48, 0.15); color: var(--danger); border: 1px solid rgba(255, 59, 48, 0.3); }
+
+        .console-msg {
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .console-msg.highlight {
+            color: #fff;
+        }
+
+        /* Message Bubbles for Chat Mode */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 320px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 15px;
+        }
+
+        .bubble {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .bubble-sent {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(255, 0, 127, 0.15));
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            border-bottom-right-radius: 4px;
+            color: #fff;
+        }
+
+        .bubble-recv {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+            color: var(--text-secondary);
+        }
+
+        .bubble-recv.server-highlight {
+            color: #fff;
+            border-color: rgba(0, 255, 136, 0.3);
+            background: rgba(0, 255, 136, 0.03);
+        }
+
+        .clear-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .clear-btn:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow"></div>
+
+    <div class="container">
+        <header>
+            <h1>YakNet <span class="logo-badge">WEBSOCKET</span></h1>
+            <p>High Performance Pure PHP Real-Time Adapter Client Console</p>
+        </header>
+
+        <div class="dashboard">
+            <!-- Left Panel: Connection & Control -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>CONNECTION CONTROLLER</span>
+                    <div class="status-wrapper">
+                        <div id="statusDot" class="status-dot"></div>
+                        <span id="statusText" class="status-text">DISCONNECTED</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="wsUrl" value="ws://localhost:8090" placeholder="ws://localhost:8090">
+                    <button id="connectBtn" class="btn btn-primary">CONNECT</button>
+                    <button id="disconnectBtn" class="btn btn-danger" style="display: none;">DISCONNECT</button>
+                </div>
+
+                <div class="message-form">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">SEND WEBSOCKET MESSAGE</label>
+                    <div class="message-input-area">
+                        <textarea id="messageInput" placeholder="Type a message to send..." disabled></textarea>
+                    </div>
+                    <button id="sendBtn" class="btn btn-primary" style="align-self: flex-end;" disabled>
+                        SEND MESSAGE
+                    </button>
+                </div>
+
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">QUICK SEND ACTIONS</label>
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="quickSend('🚀 Hello from YakNet client!')">Say Hello</button>
+                    <button class="quick-btn" onclick="quickSend('⚡ PING')">Send Ping</button>
+                    <button class="quick-btn" onclick="quickSend(JSON.stringify({type: 'system', action: 'query', payload: {id: 42}}))">Send JSON</button>
+                    <button class="quick-btn" onclick="quickSend('A'.repeat(500))">500 B Payload</button>
+                    <button class="quick-btn" onclick="quickSend('B'.repeat(5000))">5 KB Payload</button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Live Feed / Debugger -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>LIVE EVENTS FEED</span>
+                    <button class="clear-btn" onclick="clearLogs()">Clear Logs</button>
+                </div>
+
+                <!-- Log container styled like a real terminal console -->
+                <div id="consoleBox" class="console-box">
+                    <div class="console-line">
+                        <span class="console-time">--:--:--</span>
+                        <span class="console-tag tag-sys">SYS</span>
+                        <span class="console-msg">System initialized. Click Connect to initiate handshake.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        
+        const wsUrlInput = document.getElementById('wsUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const consoleBox = document.getElementById('consoleBox');
+
+        function logEvent(tag, message, highlight = false) {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+
+            const line = document.createElement('div');
+            line.className = 'console-line';
+
+            let tagClass = 'tag-sys';
+            if (tag === 'sent') tagClass = 'tag-sent';
+            if (tag === 'recv') tagClass = 'tag-recv';
+            if (tag === 'error') tagClass = 'tag-err';
+
+            line.innerHTML = `
+                <span class="console-time">${timeStr}</span>
+                <span class="console-tag ${tagClass}">${tag}</span>
+                <span class="console-msg ${highlight ? 'highlight' : ''}">${escapeHtml(message)}</span>
+            `;
+
+            consoleBox.appendChild(line);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function updateStatus(connected) {
+            if (connected) {
+                statusDot.classList.add('active');
+                statusText.classList.add('active');
+                statusText.innerText = 'CONNECTED';
+                
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-flex';
+                
+                messageInput.removeAttribute('disabled');
+                sendBtn.removeAttribute('disabled');
+            } else {
+                statusDot.classList.remove('active');
+                statusText.classList.remove('active');
+                statusText.innerText = 'DISCONNECTED';
+                
+                connectBtn.style.display = 'inline-flex';
+                disconnectBtn.style.display = 'none';
+                
+                messageInput.setAttribute('disabled', 'true');
+                sendBtn.setAttribute('disabled', 'true');
+            }
+        }
+
+        connectBtn.addEventListener('click', () => {
+            const url = wsUrlInput.value.trim();
+            if (!url) return;
+
+            logEvent('sys', `Initiating TCP connection & WebSocket Handshake with ${url}...`);
+            
+            try {
+                socket = new WebSocket(url);
+                
+                socket.onopen = (event) => {
+                    updateStatus(true);
+                    logEvent('sys', '✔ Handshake succeeded! WebSocket connection established.', true);
+                };
+
+                socket.onmessage = (event) => {
+                    logEvent('recv', event.data, true);
+                };
+
+                socket.onclose = (event) => {
+                    updateStatus(false);
+                    const cleanMsg = event.wasClean ? 'clean close' : 'abrupt close';
+                    logEvent('sys', `✖ Connection closed (${cleanMsg}, Code: ${event.code}, Reason: "${event.reason || 'None'}").`);
+                    socket = null;
+                };
+
+                socket.onerror = (error) => {
+                    logEvent('error', `WebSocket Error occurred.`);
+                };
+
+            } catch (e) {
+                logEvent('error', `Failed to connect: ${e.message}`);
+                updateStatus(false);
+            }
+        });
+
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                logEvent('sys', 'Initiating clean WebSocket close handshake...');
+                socket.close(1000, 'User clicked disconnect');
+            }
+        });
+
+        function sendMessage() {
+            const msg = messageInput.value.trim();
+            if (!msg || !socket) return;
+
+            socket.send(msg);
+            logEvent('sent', msg);
+            messageInput.value = '';
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function quickSend(val) {
+            if (!socket) {
+                logEvent('error', 'Cannot send: Client is disconnected. Connect first.');
+                return;
+            }
+            socket.send(val);
+            logEvent('sent', val);
+        }
+
+        function clearLogs() {
+            consoleBox.innerHTML = '';
+        }
+    </script>
+</body>
+</html>

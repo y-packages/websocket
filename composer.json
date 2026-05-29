@@ -1,0 +1,38 @@
+{
+    "name": "yaknet/websocket",
+    "description": "A lightweight, pure PHP WebSocket server and client adapter implementing RFC 6455.",
+    "keywords": ["websocket", "ws", "wss", "server", "client", "realtime", "resilience", "yaknet"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "YakNet Bilişim",
+            "email": "info@yakhub.com.tr"
+        }
+    ],
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "YakNet\\WebSocket\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "YakNet\\WebSocket\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "analyze": "vendor/bin/phpstan analyze src --level 5"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}

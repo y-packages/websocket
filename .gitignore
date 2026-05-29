@@ -1,0 +1,19 @@
+# Composer dependencies
+/vendor/
+
+# PHPUnit and testing cache
+/.phpunit.cache/
+/composer.lock
+
+# IDE and Editor files
+/.idea/
+/.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Local system files
+.DS_Store
+Thumbs.db
