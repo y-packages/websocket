@@ -26,6 +26,9 @@ class Server
     /** @var array<string, string> Connection read buffers mapped by resource ID */
     private array $buffers = [];
 
+    /** @var array<string, array<string, Connection>> Active connections grouped by room name */
+    private array $rooms = [];
+
     /**
      * @param string $address The IP address to bind to (e.g. '0.0.0.0' for all interfaces)
      * @param int $port The port to listen on
@@ -243,6 +246,13 @@ class Server
             unset($this->connections[$streamId]);
             unset($this->streams[$streamId]);
             unset($this->buffers[$streamId]);
+
+            // Automatically clean up this connection from all rooms
+            foreach ($this->rooms as $roomName => $connections) {
+                if (isset($connections[$streamId])) {
+                    unset($this->rooms[$roomName][$streamId]);
+                }
+            }
         }
     }
 
@@ -257,6 +267,77 @@ class Server
         }
 
         $this->serverSocket = null;
+    }
+
+    /**
+     * Join a connection to a specific channel/room.
+     */
+    public function join(Connection $connection, string $room): void
+    {
+        $streamId = (string)(int)$connection->getStream();
+        if (!isset($this->rooms[$room])) {
+            $this->rooms[$room] = [];
+        }
+        $this->rooms[$room][$streamId] = $connection;
+    }
+
+    /**
+     * Remove a connection from a specific channel/room.
+     */
+    public function leave(Connection $connection, string $room): void
+    {
+        $streamId = (string)(int)$connection->getStream();
+        if (isset($this->rooms[$room][$streamId])) {
+            unset($this->rooms[$room][$streamId]);
+        }
+    }
+
+    /**
+     * Broadcasts a message to all connections in a specific room.
+     *
+     * @param string $room
+     * @param string $message
+     * @param array<string> $excludeIds
+     */
+    public function broadcastToRoom(string $room, string $message, array $excludeIds = []): void
+    {
+        if (!isset($this->rooms[$room])) {
+            return;
+        }
+
+        foreach ($this->rooms[$room] as $connection) {
+            if (in_array($connection->getId(), $excludeIds, true)) {
+                continue;
+            }
+            $connection->send($message);
+        }
+    }
+
+    /**
+     * Broadcasts a message to all active connections on the server.
+     *
+     * @param string $message
+     * @param array<string> $excludeIds
+     */
+    public function broadcastAll(string $message, array $excludeIds = []): void
+    {
+        foreach ($this->connections as $connection) {
+            if (in_array($connection->getId(), $excludeIds, true)) {
+                continue;
+            }
+            $connection->send($message);
+        }
+    }
+
+    /**
+     * Returns all active connection objects in a specific room.
+     *
+     * @param string $room
+     * @return array<Connection>
+     */
+    public function getRoomConnections(string $room): array
+    {
+        return isset($this->rooms[$room]) ? array_values($this->rooms[$room]) : [];
     }
 
     public function __destruct()

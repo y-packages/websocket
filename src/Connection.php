@@ -12,6 +12,8 @@ class Connection
     private bool $handshaked = false;
     private array $headers = [];
     private string $remoteAddress = '';
+    private string $path = '/';
+    private array $queryParams = [];
 
     /**
      * @param resource $stream The PHP socket stream resource
@@ -63,6 +65,23 @@ class Connection
     public function setHeaders(array $headers): void
     {
         $this->headers = $headers;
+        $this->path = $headers['request_path'] ?? '/';
+        $this->queryParams = $headers['query_params'] ?? [];
+    }
+
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+
+    public function getQueryParams(): array
+    {
+        return $this->queryParams;
+    }
+
+    public function getQueryParam(string $name, $default = null): mixed
+    {
+        return $this->queryParams[$name] ?? $default;
     }
 
     public function getRemoteAddress(): string

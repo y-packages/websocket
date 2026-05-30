@@ -53,7 +53,17 @@ class HandshakeHandler
         if (!preg_match('/^GET\s+(.+)\s+HTTP\/1\.[01]$/i', $requestLine, $matches)) {
             throw new WebSocketException('Invalid HTTP request line: Must be GET request.');
         }
-        $headers['Request-URI'] = $matches[1];
+        $requestUri = $matches[1];
+        $headers['Request-URI'] = $requestUri;
+
+        $uriParts = parse_url($requestUri);
+        $headers['request_path'] = $uriParts['path'] ?? '/';
+        
+        $queryParams = [];
+        if (isset($uriParts['query'])) {
+            parse_str($uriParts['query'], $queryParams);
+        }
+        $headers['query_params'] = $queryParams;
 
         // Parse HTTP Headers
         foreach ($lines as $line) {
