@@ -8,11 +8,14 @@ use YakNet\WebSocket\Frame\FrameProcessor;
 class Connection
 {
     private string $id;
+    /** @var resource */
     private $stream;
     private bool $handshaked = false;
+    /** @var array<string, mixed> */
     private array $headers = [];
     private string $remoteAddress = '';
     private string $path = '/';
+    /** @var array<string, string> */
     private array $queryParams = [];
 
     /**
@@ -57,11 +60,17 @@ class Connection
         $this->handshaked = $handshaked;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getHeaders(): array
     {
         return $this->headers;
     }
 
+    /**
+     * @param array<string, mixed> $headers
+     */
     public function setHeaders(array $headers): void
     {
         $this->headers = $headers;
@@ -74,12 +83,18 @@ class Connection
         return $this->path;
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function getQueryParams(): array
     {
         return $this->queryParams;
     }
 
-    public function getQueryParam(string $name, $default = null): mixed
+    /**
+     * @param mixed $default
+     */
+    public function getQueryParam(string $name, mixed $default = null): mixed
     {
         return $this->queryParams[$name] ?? $default;
     }

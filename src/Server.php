@@ -13,7 +13,9 @@ class Server
     private string $address;
     private int $port;
     private ConnectionHandlerInterface $handler;
+    /** @var array<string, mixed> */
     private array $sslOptions;
+    /** @var resource|null */
     private $serverSocket = null;
     private bool $running = false;
 
@@ -33,7 +35,7 @@ class Server
      * @param string $address The IP address to bind to (e.g. '0.0.0.0' for all interfaces)
      * @param int $port The port to listen on
      * @param ConnectionHandlerInterface $handler The event-driven adapter handling connections
-     * @param array $sslOptions Optional SSL options to enable wss:// (e.g. ['local_cert' => '...', 'local_pk' => '...'])
+     * @param array<string, mixed> $sslOptions Optional SSL options to enable wss:// (e.g. ['local_cert' => '...', 'local_pk' => '...'])
      */
     public function __construct(
         string $address,

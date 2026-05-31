@@ -9,14 +9,16 @@ use YakNet\WebSocket\Frame\FrameProcessor;
 class Client
 {
     private string $url;
+    /** @var array<string, mixed> */
     private array $sslOptions;
+    /** @var resource|null */
     private $stream = null;
     private string $buffer = '';
     private bool $connected = false;
 
     /**
      * @param string $url The WebSocket URL (e.g., ws://localhost:8080/chat or wss://...)
-     * @param array $sslOptions Optional SSL configurations for secure connections (wss://)
+     * @param array<string, mixed> $sslOptions Optional SSL configurations for secure connections (wss://)
      */
     public function __construct(string $url, array $sslOptions = [])
     {

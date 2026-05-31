@@ -24,7 +24,7 @@ class HandshakeHandler
      * Returns null if the request is incomplete.
      *
      * @param string $buffer The raw request buffer (passed by reference, will consume the headers if complete)
-     * @param array $headers Reference to output parsed headers
+     * @param array<string, mixed> $headers Reference to output parsed headers
      * @return string The raw HTTP 101 response bytes
      * @throws WebSocketException If the handshake request is invalid or malformed
      */
