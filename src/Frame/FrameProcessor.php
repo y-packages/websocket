@@ -108,13 +108,20 @@ class FrameProcessor
             if ($bufferLength < 4) {
                 return null; // Need 2 more bytes for length
             }
-            $payloadLen = unpack('n', substr($buffer, 2, 2))[1];
+            $unpacked = unpack('n', substr($buffer, 2, 2));
+            if ($unpacked === false || !isset($unpacked[1])) {
+                throw new WebSocketException('Protocol error: Failed to unpack payload length.');
+            }
+            $payloadLen = $unpacked[1];
             $headerLength += 2;
         } elseif ($payloadLen === 127) {
             if ($bufferLength < 10) {
                 return null; // Need 8 more bytes for length
             }
             $parts = unpack('Nhigh/Nlow', substr($buffer, 2, 8));
+            if ($parts === false || !isset($parts['high'], $parts['low'])) {
+                throw new WebSocketException('Protocol error: Failed to unpack 64-bit payload length.');
+            }
             $payloadLen = ($parts['high'] << 32) | $parts['low'];
             
             // Check for negative length or extreme sizes on 32-bit platforms

@@ -63,7 +63,7 @@ class Client
         $errNo = 0;
         $errStr = '';
         // 5-second connection timeout
-        $this->stream = @stream_socket_client(
+        $stream = @stream_socket_client(
             $remoteAddress,
             $errNo,
             $errStr,
@@ -72,9 +72,10 @@ class Client
             $context
         );
 
-        if (!$this->stream) {
+        if ($stream === false) {
             throw new WebSocketException("Could not connect to {$remoteAddress}: {$errStr} ({$errNo})");
         }
+        $this->stream = $stream;
 
         // Generate client security nonce
         $nonce = base64_encode(random_bytes(16));

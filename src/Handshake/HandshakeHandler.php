@@ -79,24 +79,27 @@ class HandshakeHandler
         }
 
         // Validate WebSocket Upgrade headers according to RFC 6455
-        if (!isset($headers['upgrade']) || strtolower($headers['upgrade']) !== 'websocket') {
+        $upgrade = $headers['upgrade'] ?? null;
+        if (!is_string($upgrade) || strtolower($upgrade) !== 'websocket') {
             throw new WebSocketException('Missing or invalid "Upgrade" header.');
         }
 
-        if (!isset($headers['connection']) || strpos(strtolower($headers['connection']), 'upgrade') === false) {
+        $connection = $headers['connection'] ?? null;
+        if (!is_string($connection) || strpos(strtolower($connection), 'upgrade') === false) {
             throw new WebSocketException('Missing or invalid "Connection" header.');
         }
 
-        if (!isset($headers['sec-websocket-key'])) {
+        $clientKey = $headers['sec-websocket-key'] ?? null;
+        if (!is_string($clientKey)) {
             throw new WebSocketException('Missing "Sec-WebSocket-Key" header.');
         }
 
-        if (!isset($headers['sec-websocket-version']) || $headers['sec-websocket-version'] !== '13') {
+        $version = $headers['sec-websocket-version'] ?? null;
+        if (!is_string($version) || $version !== '13') {
             throw new WebSocketException('Unsupported WebSocket version: Only version 13 is supported.');
         }
 
         // Calculate WebSocket Accept Key
-        $clientKey = $headers['sec-websocket-key'];
         $acceptKey = base64_encode(sha1($clientKey . self::WEBSOCKET_GUID, true));
 
         // Format Response
@@ -108,9 +111,10 @@ class HandshakeHandler
         ];
 
         // Echo protocol if requested
-        if (isset($headers['sec-websocket-protocol'])) {
+        $secProtocol = $headers['sec-websocket-protocol'] ?? null;
+        if (is_string($secProtocol)) {
             // Echo first requested subprotocol as simple default behavior
-            $protocols = explode(',', $headers['sec-websocket-protocol']);
+            $protocols = explode(',', $secProtocol);
             $responseHeaders[] = 'Sec-WebSocket-Protocol: ' . trim($protocols[0]);
         }
 

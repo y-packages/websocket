@@ -19,16 +19,16 @@ class Server
     private $serverSocket = null;
     private bool $running = false;
 
-    /** @var array<string, Connection> Active connections mapped by resource ID */
+    /** @var array<array-key, Connection> Active connections mapped by resource ID */
     private array $connections = [];
 
-    /** @var array<string, resource> Active client streams mapped by resource ID */
+    /** @var array<array-key, resource> Active client streams mapped by resource ID */
     private array $streams = [];
 
-    /** @var array<string, string> Connection read buffers mapped by resource ID */
+    /** @var array<array-key, string> Connection read buffers mapped by resource ID */
     private array $buffers = [];
 
-    /** @var array<string, array<string, Connection>> Active connections grouped by room name */
+    /** @var array<string, array<array-key, Connection>> Active connections grouped by room name */
     private array $rooms = [];
 
     /**
@@ -70,7 +70,7 @@ class Server
 
         $errNo = 0;
         $errStr = '';
-        $this->serverSocket = @stream_socket_server(
+        $socket = @stream_socket_server(
             $serverAddress,
             $errNo,
             $errStr,
@@ -78,9 +78,10 @@ class Server
             $context
         );
 
-        if (!$this->serverSocket) {
+        if ($socket === false) {
             throw new WebSocketException("Could not start server on {$serverAddress}: {$errStr} ({$errNo})");
         }
+        $this->serverSocket = $socket;
 
         // Set server socket to non-blocking
         stream_set_blocking($this->serverSocket, false);
@@ -88,7 +89,13 @@ class Server
         $this->running = true;
 
         while ($this->running) {
-            $read = array_merge([$this->serverSocket], $this->streams);
+            if (!is_resource($this->serverSocket)) {
+                break;
+            }
+
+            $readList = array_merge([$this->serverSocket], array_values($this->streams));
+            /** @var array<int, resource> $read */
+            $read = $readList;
             $write = [];
             $except = [];
 
@@ -108,6 +115,9 @@ class Server
 
             // Check for new client connection
             if (in_array($this->serverSocket, $read, true)) {
+                if (!is_resource($this->serverSocket)) {
+                    continue;
+                }
                 $clientSocket = @stream_socket_accept($this->serverSocket);
                 if ($clientSocket) {
                     stream_set_blocking($clientSocket, false);
@@ -222,8 +232,10 @@ class Server
                 
                 if (strlen($payload) >= 2) {
                     $parts = unpack('n', substr($payload, 0, 2));
-                    $code = $parts[1];
-                    $reason = substr($payload, 2);
+                    if ($parts !== false && isset($parts[1])) {
+                        $code = $parts[1];
+                        $reason = substr($payload, 2);
+                    }
                 }
 
                 // Trigger closure on adapter

@@ -74,8 +74,12 @@ class Connection
     public function setHeaders(array $headers): void
     {
         $this->headers = $headers;
-        $this->path = $headers['request_path'] ?? '/';
-        $this->queryParams = $headers['query_params'] ?? [];
+        $path = $headers['request_path'] ?? '/';
+        $this->path = is_string($path) ? $path : '/';
+        $qParams = $headers['query_params'] ?? [];
+        /** @var array<string, string> $qParamsFiltered */
+        $qParamsFiltered = is_array($qParams) ? $qParams : [];
+        $this->queryParams = $qParamsFiltered;
     }
 
     public function getPath(): string
