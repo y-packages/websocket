@@ -31,22 +31,31 @@ class Server
     /** @var array<string, array<array-key, Connection>> Active connections grouped by room name */
     private array $rooms = [];
 
+    private int $heartbeatInterval;
+    private int $heartbeatTimeout;
+
     /**
      * @param string $address The IP address to bind to (e.g. '0.0.0.0' for all interfaces)
      * @param int $port The port to listen on
      * @param ConnectionHandlerInterface $handler The event-driven adapter handling connections
      * @param array<string, mixed> $sslOptions Optional SSL options to enable wss:// (e.g. ['local_cert' => '...', 'local_pk' => '...'])
+     * @param int $heartbeatInterval The time in seconds between sending heartbeat ping frames (0 to disable)
+     * @param int $heartbeatTimeout The time in seconds to wait for a heartbeat pong response before closing connection
      */
     public function __construct(
         string $address,
         int $port,
         ConnectionHandlerInterface $handler,
-        array $sslOptions = []
+        array $sslOptions = [],
+        int $heartbeatInterval = 30,
+        int $heartbeatTimeout = 10
     ) {
         $this->address = $address;
         $this->port = $port;
         $this->handler = $handler;
         $this->sslOptions = $sslOptions;
+        $this->heartbeatInterval = $heartbeatInterval;
+        $this->heartbeatTimeout = $heartbeatTimeout;
     }
 
     /**
@@ -87,10 +96,41 @@ class Server
         stream_set_blocking($this->serverSocket, false);
 
         $this->running = true;
+        $lastHeartbeatCheck = time();
 
         while ($this->running) {
             if (!is_resource($this->serverSocket)) {
                 break;
+            }
+
+            // Run heartbeat check if enabled and interval has elapsed
+            if ($this->heartbeatInterval > 0 && (time() - $lastHeartbeatCheck >= 1)) {
+                $lastHeartbeatCheck = time();
+                $now = time();
+                $timedOut = [];
+                foreach ($this->connections as $streamId => $connection) {
+                    if (!$connection->isHandshaked()) {
+                        continue;
+                    }
+                    if (!$connection->hasPingPending()) {
+                        if ($now - $connection->getLastSeen() > $this->heartbeatInterval) {
+                            $connection->ping('heartbeat');
+                            $connection->setPingPending(true);
+                            $connection->setLastSeen($now);
+                        }
+                    } else {
+                        if ($now - $connection->getLastSeen() > $this->heartbeatTimeout) {
+                            $timedOut[] = $streamId;
+                        }
+                    }
+                }
+                foreach ($timedOut as $streamId) {
+                    if (isset($this->connections[$streamId])) {
+                        $connection = $this->connections[$streamId];
+                        $connection->close(1002, 'Ping timeout (Heartbeat failed)');
+                        $this->handleDisconnect($streamId, 1002, 'Ping timeout');
+                    }
+                }
             }
 
             $readList = array_merge([$this->serverSocket], array_values($this->streams));
@@ -155,6 +195,8 @@ class Server
 
                 // Append received bytes to this connection's read buffer
                 $this->buffers[$streamId] .= $data;
+                $connection->setLastSeen(time());
+                $connection->setPingPending(false);
 
                 // Process connection state
                 if (!$connection->isHandshaked()) {
@@ -223,6 +265,8 @@ class Server
 
             case Frame::OPCODE_PONG:
                 // Heartbeat response acknowledged, no specific action required
+                $connection->setPingPending(false);
+                $connection->setLastSeen(time());
                 break;
 
             case Frame::OPCODE_CLOSE:

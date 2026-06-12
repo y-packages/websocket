@@ -17,6 +17,8 @@ class Connection
     private string $path = '/';
     /** @var array<string, string> */
     private array $queryParams = [];
+    private int $lastSeen;
+    private bool $pingPending = false;
 
     /**
      * @param resource $stream The PHP socket stream resource
@@ -29,6 +31,7 @@ class Connection
 
         $this->stream = $stream;
         $this->id = uniqid('conn_', true);
+        $this->lastSeen = time();
         
         // Retrieve remote peer name
         $peerName = stream_socket_get_name($stream, true);
@@ -211,5 +214,25 @@ class Connection
         $written = @fwrite($this->stream, $rawBytes);
 
         return $written === $length;
+    }
+
+    public function getLastSeen(): int
+    {
+        return $this->lastSeen;
+    }
+
+    public function setLastSeen(int $lastSeen): void
+    {
+        $this->lastSeen = $lastSeen;
+    }
+
+    public function hasPingPending(): bool
+    {
+        return $this->pingPending;
+    }
+
+    public function setPingPending(bool $pingPending): void
+    {
+        $this->pingPending = $pingPending;
     }
 }
